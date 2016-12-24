@@ -1,0 +1,8 @@
+<apex:component controller="IMGE_DisplayImageController">
+    <apex:attribute name="IMGE_name" description="" type="String" required="true" assignTo="{!IMGE_uname}" />
+    <apex:attribute name="IMGE_width" description="" type="String" default=""/>
+    <apex:attribute name="IMGE_height" description="" type="String" default=""/>
+    <apex:attribute name="IMGE_style" description="" type="String" default=""/>
+    <apex:attribute name="IMGE_class" description="" type="String" default=""/>
+    <apex:image url="/servlet/servlet.FileDownload?file={!IMGE_uid}" height="{!IMGE_height}" width="{!IMGE_width}" style="{!IMGE_class}"/>
+</apex:component>

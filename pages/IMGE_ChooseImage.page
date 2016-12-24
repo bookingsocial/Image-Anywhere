@@ -1,0 +1,493 @@
+<apex:page showHeader="true" sidebar="true" >
+    <apex:stylesheet value="{!URLfor ($Resource.IMGE_BookingSocial, 'css/bootstrap-min.css')}"/>
+    <style>
+        /* layout.css Style */
+        .upload-drop-zone {
+        height: 200px;
+        border-width: 2px;
+        margin-bottom: 20px;
+        }
+        
+        /* skin.css Style*/
+        .upload-drop-zone {
+        color: #ccc;
+        border-style: dashed;
+        border-color: #ccc;
+        line-height: 200px;
+        text-align: center
+        }
+        .upload-drop-zone.drop {
+        color: #222;
+        border-color: #222;
+        }
+        .ui-tabs .ui-tabs-nav { list-style: none; position: relative; padding: 0; margin: 0; }
+        .ui-tabs .ui-tabs-nav li { position: relative; float: left; margin: 0 3px -2px 0; padding: 0; }
+        .ui-tabs .ui-tabs-nav li a { display: block; padding: 10px 20px; background: #f0f0f0; border: 2px #cccccc solid; border-bottom-color: #cccccc; outline: none; border-radius: 4px 4px 0px 0px; color: rgb(85, 85, 85); text-decoration: none; }
+        .ui-tabs .ui-tabs-nav li a.active { display: block; padding: 10px 20px; background: #ffffff; border: 2px #cccccc solid; border-bottom-color: #ffffff; outline: none; border-radius: 4px 4px 0px 0px; color: #000000; }
+        .ui-tabs .ui-tabs-nav li.ui-tabs-selected a { padding: 10px 20px 12px 20px; background: purple; border-bottom-style: none; border-radius: 0px 0px 0px 0px; }
+        .ui-tabs .ui-tabs-nav li.ui-tabs-selected a, .ui-tabs .ui-tabs-nav li.ui-state-disabled a, .ui-tabs .ui-tabs-nav li.ui-state-processing a { cursor: default; }
+        .ui-tabs .ui-tabs-nav li a, .ui-tabs.ui-tabs-collapsible .ui-tabs-nav li.ui-tabs-selected a { cursor: pointer; }
+        .ui-tabs .ui-tabs-panel { display: block; clear: both; border: 2px #cccccc solid; padding: 10px; border-radius: 0px 4px 4px 4px; }
+        .ui-tabs .ui-tabs-hide  { display: none; }
+        .white-panel {
+        background: #FFF;
+        box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.3);
+        padding: 0px !important;
+        border-radius: 5px;
+        margin: 5px;
+        }
+        /*
+        stylize any heading tags withing white-panel below
+        */
+        #imagesListRow {
+        position: relative;
+        max-width: 100%;
+        width: 100%;
+        }
+        .white-panel h1 {
+        font-size: 1em;
+        }
+        .white-panel h1 a {
+        color: #A92733;
+        }
+        #fileselector {
+        margin: 10px; 
+        }
+        .margin-correction {
+        margin-right: 10px;   
+        }
+    </style>
+    <div class="BKSL_" data-ng-app="ImageUpload">
+        <div class="ui-tabs">
+            
+            <ul class="ui-tabs-nav">
+                <li><a class="active text-primary" id="showUpload" href="javascript:">Upload Images</a></li>
+                <li><a class="text-muted" id="showUploadedImages" href="javascript:">Uploaded Images</a></li>
+            </ul>
+            
+            <div id="uploadImages" class="ui-tabs-panel">
+                <div style="text-align:center;">
+                    <!-- Standar Form -->
+                    <br/>
+                    <h5>Select images from your computer</h5>
+                    <br/>
+                    <br/>
+                    <form action="" method="post" enctype="multipart/form-data" id="js-upload-form">
+                        <!--<div class="form-inline">
+<div class="form-group">
+<input type="file" name="files[]" id="js-upload-files" multiple="true"/>
+</div>
+<button type="submit" class="btn btn-sm btn-primary" id="js-upload-submit">Upload files</button>
+</div>-->
+                        <span id="fileselector">
+                            <label class="btn btn-sm btn-primary" for="js-upload-files">
+                                <input type="file" name="files[]" id="js-upload-files" multiple="true" style="display:none;"/>
+                                <i class="glyphicon glyphicon-cloud-upload margin-correction"></i>upload file
+                            </label>
+                        </span>
+                    </form>
+                    <br/>
+                    <!-- Drop Zone -->
+                    <h5>Or drag and drop images below</h5>
+                    <br/>
+                    <div class="upload-drop-zone" id="drop-zone">
+                        <i class="glyphicon glyphicon-cloud-upload margin-correction"></i> Just drag and drop files here
+                    </div>
+                </div>
+                <!-- Upload Finished -->
+                <div class="js-upload-finished">
+                    <h4>Processed files</h4>
+                    <div class="list-group" id="fileListDiv">
+                        
+                    </div>
+                </div>
+            </div>
+            <div id="imagesList" class="ui-tabs-panel" style="display:none;background: #d4d4d4;">
+                <div class="grid" id="imagesListRow">
+                    <center>loading images ...</center>
+                </div>
+                <input type="file" name="updatefiles[]" id="js-update-files" style="display:none;"/>
+            </div>
+            
+        </div>
+        
+    </div> <!-- /BKSL__ -->
+    <apex:includeScript value="{!URLfor ($Resource.IMGE_BookingSocial, 'js/vendor/jquery.min.js')}"/>
+    <apex:includeScript value="{!URLfor ($Resource.IMGE_BookingSocial, 'js/vendor/jquery.masonry.min.js')}"/>
+    <script>
+	 // UPLOAD CLASS DEFINITION
+	// ======================
+	
+	var dropZone = document.getElementById('drop-zone');
+	var uploadForm = document.getElementById('js-upload-form');
+	var uploadFiles = document.getElementById('js-upload-files');
+	var deleteFiles = document.getElementById('js-delete-files');
+	var showUpload = document.getElementById('showUpload');
+	var showUploadedImages = document.getElementById('showUploadedImages');
+	var maxStringSize = 6000000;    //Maximum String size is 6,000,000 characters
+	var maxFileSize = 4350000;       //After Base64 Encoding, this is the max file size
+	var chunkSize = 950000;         //Maximum Javascript Remoting message size is 1,000,000 characters
+	var fileListDiv = $("#fileListDiv");
+	var progressBar = $("#progressBar");
+	var sfdcHostName =window.location.host.split('.')[1];
+	var updateFile = document.getElementById('js-update-files');
+    var masonryNode= $('.grid');
+    masonryNode.masonry({
+        // options...
+        itemSelector: '.grid-item',
+    });
+    var getAllImagesPublic;
+    /**
+     * Copies the current selected text to the SO clipboard
+     * This method must be called from an event to work with `execCommand`
+     * @param {String} text Text to copy
+     * @param {Boolean} [fallback] Set to true shows a prompt
+     * @return Boolean Returns `true` if the text was copied or the user clicked on accept (in prompt), `false` otherwise
+    */
+    var CopyToClipboard = function(text, fallback){
+        var fb = function () {
+            $t.remove();
+            if (fallback !== undefined && fallback) {
+                var fs = 'Please, copy the following text:';
+                if (window.prompt(fs, text) !== null) return true;
+            }
+            return false;
+        };
+        var $t = $('<textarea />');
+        $t.val(text).css({
+            width: '100px',
+            height: '40px',
+            border: 'none'
+        }).appendTo('body');
+        $t.select();
+        try {
+            if (document.execCommand('copy')) {
+                $t.remove();
+                return true;
+            }
+            fb();
+        }
+        catch (e) {
+            fb();
+        }
+    };
+    var selectedImageId = '';
+    var UpdateSelectedImage = function(ImageId){
+        selectedImageId = ImageId; 
+        $('#js-update-files').trigger('click');
+    };
+	var doDeleteImage = function(ImageId) {
+	       var retVal = confirm("Do you want to continue?");
+		   if(!retVal)
+			  return false;
+			  
+            var dfd = jQuery.Deferred();
+            // return either the cached value or jqXHR object wrapped Promise
+            var xhr = new XMLHttpRequest();
+            
+            var sfdcurl = 'https://'+sfdcHostName+'.salesforce.com/services/apexrest/BKSL/ImageUpload/?ImageId='+encodeURIComponent(ImageId);
+            
+            xhr.open('DELETE',sfdcurl);
+            xhr.setRequestHeader("Authorization","Bearer {!$Api.Session_ID}");
+            xhr.onload = function() {
+                
+            };
+            
+            xhr.upload.onprogress = function (event) {
+                if (event.lengthComputable) {
+                    var complete = (event.loaded / event.total * 100 | 0);
+                }
+            }
+            xhr.onreadystatechange=function()
+            {
+                if (xhr.readyState==4 && xhr.status != 200)
+                {
+                    if(xhr.responseText){
+                        alert(xhr.responseText);
+                        dfd.resolve();
+                    }else{
+                        console.log(xhr);
+                        dfd.resolve();
+                    }
+                }else if(xhr.readyState==4 && xhr.status == 200){
+                    console.log(xhr);
+                    getAllImagesPublic();
+                    dfd.resolve();
+                }
+            }
+            
+            xhr.send();
+            
+            return dfd.promise();
+     };
+    + function($) {
+        'use strict';
+         showUpload.addEventListener("click",function(e){
+            e.preventDefault();
+            $(showUpload).addClass('active');
+            $(showUploadedImages).removeClass('active');
+            $('#uploadImages').show();
+            $('#imagesList').hide();
+            uploadForm.reset();
+            var fileList = '';
+            fileListDiv.html(fileList);
+        });
+        showUploadedImages.addEventListener("click",function(e){
+            e.preventDefault();
+            $(showUpload).removeClass('active');
+            $(showUploadedImages).addClass('active');
+            $('#uploadImages').hide();
+            $('#imagesList').show();
+            getAllImages();
+            
+            /*https://c.na15.content.force.com/servlet/servlet.FileDownload?file=015i000000DYQJt
+            <div class="col-sm-4">
+                        <div class="thumbnail">
+                            <a href="#" class="">
+                                <div class="caption">
+                                    <h4 class="">Thumbnail Headline</h4>
+                                    
+                                    <p class="">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore
+                                        
+                                        
+                                    </p>
+                                </div>
+                                <img src="/servlet/servlet.FileDownload?file=015i000000DYQJt" alt="..." class=""/>
+                            </a>
+                        </div>
+                    </div>*/
+        });
+        updateFile.addEventListener("change",function(e){
+            var uploadImages = updateFile.files;
+            e.preventDefault();
+            $.each(uploadImages, function (index, file) {
+                doUpdateImages(selectedImageId,file);
+            });
+        });
+        var doUpdateImages = function(ImageId,file) {
+            var dfd = jQuery.Deferred();
+            // return either the cached value or jqXHR object wrapped Promise
+            var xhr = new XMLHttpRequest();
+            
+            var sfdcurl = 'https://'+sfdcHostName+'.salesforce.com/services/apexrest/BKSL/ImageUpload/?ImageId='+encodeURIComponent(ImageId);
+            
+            xhr.open('POST',sfdcurl);
+            
+            //xhr.setRequestHeader("Content-type",'multipart/form-data');
+            //xhr.setRequestHeader("Content-type",'');
+            xhr.setRequestHeader("Authorization","Bearer {!$Api.Session_ID}");
+            //xhr.setRequestHeader('SalesforceProxy-Endpoint', sfdcurl);
+            xhr.onload = function() {
+            };
+            
+            xhr.upload.onprogress = function (event) {
+                if (event.lengthComputable) {
+                    var complete = (event.loaded / event.total * 100 | 0);
+                }
+            }
+            xhr.onreadystatechange=function()
+            {
+                if (xhr.readyState==4 && xhr.status != 200)
+                {
+                    if(xhr.responseText){
+                        alert(xhr.responseText);
+                        dfd.resolve();
+                    }else{
+                        console.log(xhr);
+                        dfd.resolve();
+                    }
+                }else if(xhr.readyState==4 && xhr.status == 200){
+                    console.log(xhr);
+                    getAllImages();
+                    dfd.resolve();
+                }
+            }
+            
+            xhr.send(file);
+            
+            return dfd.promise();
+        }
+        var doUploadImages = function(progressNodeId,file) {
+            var dfd = jQuery.Deferred();
+            // return either the cached value or jqXHR object wrapped Promise
+            var xhr = new XMLHttpRequest();
+            
+            var sfdcurl = 'https://'+sfdcHostName+'.salesforce.com/services/apexrest/BKSL/ImageUpload/?FileName='+encodeURIComponent(file.name)+'&FolderId={!$Label.IMGE_FolderId}';
+            
+            xhr.open('POST',sfdcurl);
+            
+            //xhr.setRequestHeader("Content-type",'multipart/form-data');
+            //xhr.setRequestHeader("Content-type",'');
+            xhr.setRequestHeader("Authorization","Bearer {!$Api.Session_ID}");
+            //xhr.setRequestHeader('SalesforceProxy-Endpoint', sfdcurl);
+            xhr.onload = function() {
+                $('#'+progressNodeId).attr('value',100);
+                //resetAll();
+            };
+            
+            xhr.upload.onprogress = function (event) {
+                if (event.lengthComputable) {
+                    var complete = (event.loaded / event.total * 100 | 0);
+                    $('#'+progressNodeId).attr('value',complete);
+                }
+            }
+            xhr.onreadystatechange=function()
+            {
+                if (xhr.readyState==4 && xhr.status != 200)
+                {
+                    if(xhr.responseText){
+                        $('#'+progressNodeId+'Status').html('Failed');
+                        $('#'+progressNodeId).hide();
+                        dfd.resolve();
+                    }else{
+                        $('#'+progressNodeId+'Status').html('Failed');
+                        $('#'+progressNodeId).hide();
+                        console.log(xhr);
+                        dfd.resolve();
+                    }
+                }else if(xhr.readyState==4 && xhr.status == 200){
+                    console.log(xhr);
+                    $('#'+progressNodeId+'Status').html('Success');
+                    $('#'+progressNodeId).hide();
+                    dfd.resolve();
+                }
+            }
+            
+            xhr.send(file);
+            
+            return dfd.promise();
+        }
+        var getAllImages = function() {
+            var dfd = jQuery.Deferred();
+            var xhr = new XMLHttpRequest();
+            var sfdcurl = 'https://'+sfdcHostName+'.salesforce.com/services/apexrest/BKSL/ImageUpload/?FolderId={!$Label.IMGE_FolderId}';
+            
+            xhr.open('GET',sfdcurl);
+            
+            //xhr.setRequestHeader("Content-type",'multipart/form-data');
+            //xhr.setRequestHeader("Content-type",'');
+            xhr.setRequestHeader("Authorization","Bearer {!$Api.Session_ID}");
+            //xhr.setRequestHeader('SalesforceProxy-Endpoint', sfdcurl);
+            xhr.onload = function() {
+                //resetAll();
+            };
+            xhr.onreadystatechange=function()
+            {
+                var imageBuild = '';
+                if(xhr.readyState==4 && xhr.status == 200){
+                    console.log(xhr);
+                    var imageBuild = '';
+                    $('#imagesListRow').html(imageBuild);
+                    masonryNode.masonry( 'destroy' )
+                    if(xhr.response.length > 0){
+                        var images = JSON.parse(xhr.response);
+                        for(var i=0;i<images.length;i++){
+                            imageBuild ='';
+                            imageBuild +='<article class="col-lg-4 col-md-4 col-xs-6 grid-item white-panel">';
+                            imageBuild +='<img src="/servlet/servlet.FileDownload?file='+images[i].Id+'&lastMod='+new Date().getTime()+'" data-echo="/servlet/servlet.FileDownload?file='+images[i].Id+'&lastMod='+new Date().getTime()+'" alt="'+images[i].Name+'" class="img-responsive" />';
+                            imageBuild +='<p class=""><div class="btn-group" role="group" aria-label="actionButtons">';
+                            imageBuild +='<button type="button" onClick="CopyToClipboard(\''+images[i].DeveloperName+'\', true)" class="btn btn-secondary" data-name="'+images[i].DeveloperName+'" data-imageId="'+images[i].Id+'">Copy</button>';
+                            imageBuild +='<button type="button" onClick="UpdateSelectedImage(\''+images[i].Id+'\')" class="btn btn-secondary" data-imageId="'+images[i].Id+'" >Edit</button>';
+                            imageBuild +='<button type="button" class="btn btn-secondary" onClick="doDeleteImage(\''+images[i].Id+'\')"  data-imageId="'+images[i].Id+'">Delete</button>';
+                            imageBuild +='</div></p>';
+                            imageBuild +='</article>';
+                            $('#imagesListRow').append(imageBuild);
+                        }
+                    }
+                    masonryNode.imagesLoaded( function(){
+                        masonryNode.masonry({
+                            itemSelector : '.grid-item'
+                        });
+                    });
+                    dfd.resolve();
+                }
+            }
+            
+            xhr.send();
+            
+            return dfd.promise();
+        }
+        getAllImagesPublic = getAllImages;
+        uploadFiles.addEventListener('change', function(e) {
+            var uploadImages = document.getElementById('js-upload-files').files;
+            e.preventDefault();
+            var fileList = '';
+            fileListDiv.html(fileList);
+            $.each(uploadImages, function (index, file) {
+                var progressNodeId =index+''+file.lastModified;
+                fileList ='<a href="javascript:" class="list-group-item list-group-item-info"><span class="badge pull-right '+file.type+'" id="'+progressNodeId+'Status">Uploading...</span>'+file.name+'</a><progress style="width: 100%;" class="progress progress-success" id="'+index+''+file.lastModified+'" data-value="0" max="100"></progress><br/>'
+                doUploadImages(progressNodeId,file);
+                fileListDiv.append(fileList);
+            });
+            uploadForm.reset();
+        })
+        
+        var doDeleteImages = function(ImageId) {
+            var dfd = jQuery.Deferred();
+            // return either the cached value or jqXHR object wrapped Promise
+            var xhr = new XMLHttpRequest();
+            
+            var sfdcurl = 'https://'+sfdcHostName+'.salesforce.com/services/apexrest/BKSL/ImageUpload/?ImageId='+encodeURIComponent(ImageId);
+            
+            xhr.open('DELETE',sfdcurl);
+            xhr.setRequestHeader("Authorization","Bearer {!$Api.Session_ID}");
+            xhr.onload = function() {
+                
+            };
+            
+            xhr.upload.onprogress = function (event) {
+                if (event.lengthComputable) {
+                    var complete = (event.loaded / event.total * 100 | 0);
+                }
+            }
+            xhr.onreadystatechange=function()
+            {
+                if (xhr.readyState==4 && xhr.status != 200)
+                {
+                    if(xhr.responseText){
+                        alert(xhr.responseText);
+                        dfd.resolve();
+                    }else{
+                        console.log(xhr);
+                        dfd.resolve();
+                    }
+                }else if(xhr.readyState==4 && xhr.status == 200){
+                    console.log(xhr);
+                    getAllImages();
+                    dfd.resolve();
+                }
+            }
+            
+            xhr.send(file);
+            
+            return dfd.promise();
+        }
+        
+        dropZone.ondrop = function(e) {
+            e.preventDefault();
+            this.className = 'upload-drop-zone';
+            var fileList = '';
+            fileListDiv.html(fileList);
+            $.each(e.dataTransfer.files, function (index, file) {
+                var progressNodeId =index+''+file.lastModified;
+                fileList ='<a href="javascript:" class="list-group-item list-group-item-primary"><span class="badge pull-right '+file.type+'" id="'+progressNodeId+'Status">Uploading...</span>'+file.name+'</a><progress style="width: 100%;" class="progress progress-success" id="'+index+''+file.lastModified+'" data-value="0" max="100"></progress><br/>'
+                //create_blob(file, function(blob_string) { 
+                doUploadImages(progressNodeId,file);
+                //});
+                fileListDiv.append(fileList);
+            });
+        }
+        
+        dropZone.ondragover = function() {
+            this.className = 'upload-drop-zone drop';
+            return false;
+        }
+        
+        dropZone.ondragleave = function() {
+            this.className = 'upload-drop-zone';
+            return false;
+        }       
+        
+    }(jQuery);
+    </script>
+</apex:page>

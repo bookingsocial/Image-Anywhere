@@ -25,6 +25,10 @@
         <name>CustomTab</name>
     </types>
     <types>
+        <members>IMGE_BookingSocial</members>
+        <name>Document</name>
+    </types>
+    <types>
         <members>*</members>
         <name>StaticResource</name>
     </types>

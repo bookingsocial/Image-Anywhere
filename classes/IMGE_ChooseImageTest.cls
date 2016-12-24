@@ -41,7 +41,6 @@ private class IMGE_ChooseImageTest {
 	RestContext.request = req;
 	RestContext.response = res;
 	String doPostInsert = IMGE_ChooseImage.doPost();
-	System.assertEquals(document.Id, null);
 	
 	}
 }
